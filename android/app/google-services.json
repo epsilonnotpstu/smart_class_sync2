@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1059660678739",
+    "project_id": "smartclasssync-49c87",
+    "storage_bucket": "smartclasssync-49c87.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1059660678739:android:63caa523a772d3293268a6",
+        "android_client_info": {
+          "package_name": "com.example.smart_class_sync"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIiLDM562AFp1MN-_vGk6YuX6OsWASMQ0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
