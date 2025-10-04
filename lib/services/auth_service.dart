@@ -42,6 +42,7 @@ class AuthService {
         email: email,
         password: password,
       );
+      bool isVerified = role == 'student';
       UserModel user = UserModel(
         uid: result.user!.uid,
         email: email,
@@ -49,9 +50,16 @@ class AuthService {
         role: role,
         semester: semester,
         phoneNumber: phoneNumber,
-        isVerified: role == 'student' ? true : false,
+        isVerified: isVerified,
       );
       await _firestore.collection('users').doc(result.user!.uid).set(user.toMap());
+      if (!isVerified) {
+        await _firestore.collection('pendingVerifications').doc(result.user!.uid).set({
+          'email': email,
+          'fullName': fullName,
+          'role': role,
+        });
+      }
       return user;
     } catch (e) {
       rethrow;
