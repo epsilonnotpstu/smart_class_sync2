@@ -1,10 +1,6 @@
-// lib/screens/student/student_dashboard.dart (CORRECTED)
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-import 'package:smart_class_sync/models/user_model.dart';
-import 'package:smart_class_sync/utils/app_styles.dart';
 import '../../services/auth_service.dart';
 
 class StudentDashboard extends StatelessWidget {
@@ -12,42 +8,33 @@ class StudentDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context, listen: false);
-
+    final authService = Provider.of<AuthService>(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Student Dashboard'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () async => await authService.signOut(),
-            tooltip: 'Logout',
+            onPressed: () async {
+              await authService.signOut();
+            },
           ),
         ],
       ),
-      // Use a StreamBuilder to get the current user data
       body: StreamBuilder<UserModel?>(
         stream: authService.user,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
           if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text('User not found.'));
+            return const Center(child: Text('Loading...'));
           }
           final user = snapshot.data!;
-
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20.0),
-                  child: Text('Welcome, ${user.fullName}!', style: AppTextStyles.headline1),
-                ),
-                const Text('Your Weekly Routine', style: AppTextStyles.headline2),
-                const SizedBox(height: 10),
+                Text('Welcome, ${user.fullName}!', style: const TextStyle(fontSize: 24)),
+                const SizedBox(height: 20),
+                const Text('Your Routine', style: TextStyle(fontSize: 20)),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
@@ -57,32 +44,17 @@ class StudentDashboard extends StatelessWidget {
                         .orderBy('time')
                         .snapshots(),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                      if (!snapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
-                      }
-                      if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Center(
-                          child: Text('Your routine has not been set yet.', style: AppTextStyles.bodyText),
-                        );
                       }
                       final routines = snapshot.data!.docs;
                       return ListView.builder(
                         itemCount: routines.length,
                         itemBuilder: (context, index) {
-                          final routine = routines[index].data() as Map<String, dynamic>;
-                          return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 8.0),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            child: ListTile(
-                              leading: const Icon(Icons.schedule, color: AppColors.primary, size: 30),
-                              title: Text(routine['subject'] ?? 'No Subject', style: const TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Text('${routine['day'] ?? 'N/A'} at ${routine['time'] ?? 'N/A'}'),
-                              trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                            ),
+                          final routine = routines[index];
+                          return ListTile(
+                            title: Text(routine['subject'] ?? 'No Subject'),
+                            subtitle: Text('${routine['day']} at ${routine['time']}'),
                           );
                         },
                       );
