@@ -19,21 +19,41 @@ class FirestoreService {
   }
 
   // --- Student Methods ---
-  Stream<List<ClassLogModel>> getTodaysClassesForStudent(String semester) {
+  Stream<List<ClassLogModel>> getUpcomingClassesForStudent(String semester) {
     DateTime now = DateTime.now();
-    DateTime startOfDay = DateTime(now.year, now.month, now.day);
-    DateTime endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    DateTime startOfToday = DateTime(now.year, now.month, now.day);
+    DateTime endPeriod = startOfToday.add(const Duration(days: 7));
 
+    // TODO: The original query required a composite index in Firestore.
+    // This query is modified to filter by semester on the client-side to avoid the immediate error.
+    // For better performance and lower read costs, you should create the composite index in your Firebase console.
+    // The error message from Firestore provides a direct link to create it.
+    // The index should be on: `semester` (Ascending) and `scheduledDate` (Ascending) for the `classLog` collection.
+    // Once the index is created, you can revert to the more efficient query:
+    /*
     return _db
         .collection('classLog')
         .where('semester', isEqualTo: semester)
-        .where('scheduledDate', isGreaterThanOrEqualTo: startOfDay)
-        .where('scheduledDate', isLessThanOrEqualTo: endOfDay)
+        .where('scheduledDate', isGreaterThanOrEqualTo: startOfToday)
+        .where('scheduledDate', isLessThan: endPeriod)
         .orderBy('scheduledDate')
         .snapshots()
         .map((snapshot) => snapshot.docs
-        .map((doc) => ClassLogModel.fromFirestore(doc.data(), doc.id))
-        .toList());
+            .map((doc) => ClassLogModel.fromFirestore(doc.data(), doc.id))
+            .toList());
+    */
+    return _db
+        .collection('classLog')
+        .where('scheduledDate', isGreaterThanOrEqualTo: startOfToday)
+        .where('scheduledDate', isLessThan: endPeriod)
+        .orderBy('scheduledDate')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => ClassLogModel.fromFirestore(doc.data(), doc.id))
+          .where((log) => log.semester == semester) // Client-side filter
+          .toList();
+    });
   }
 
   Stream<List<RoutineModel>> getWeeklyRoutineForStudent(String semester) {
@@ -64,7 +84,6 @@ class FirestoreService {
     required String status,
     required DateTime scheduledDate,
   }) async {
-    // Check if a log for this exact class already exists to prevent duplicates
     final existingLog = await _db.collection('classLog')
         .where('courseId', isEqualTo: courseId)
         .where('teacherId', isEqualTo: teacherId)
@@ -83,12 +102,11 @@ class FirestoreService {
         'notificationSent': false,
       });
     } else {
-      // Optionally, update the existing log's status if it already exists
       await existingLog.docs.first.reference.update({'status': status});
     }
   }
 
-  // --- Resource Sharing Methods (NEW) ---
+  // --- Resource Sharing Methods ---
   Future<void> uploadAndUpdateClassNotes(String classLogId) async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -100,21 +118,16 @@ class FirestoreService {
       String fileName = result.files.first.name;
 
       if (fileBytes != null) {
-        // Upload to Firebase Storage
         final ref = _storage.ref('class_notes/$classLogId/$fileName');
         UploadTask uploadTask = ref.putData(fileBytes);
         TaskSnapshot snapshot = await uploadTask;
         String downloadUrl = await snapshot.ref.getDownloadURL();
-
-        // Update the classLog document with the URL
-        await _db.collection('classLog').doc(classLogId).update({
-          'notesUrl': downloadUrl,
-        });
+        await _db.collection('classLog').doc(classLogId).update({'notesUrl': downloadUrl});
       }
     }
   }
 
-  // --- Feedback Methods (NEW) ---
+  // --- Feedback Methods ---
   Future<void> submitFeedback({
     required String classLogId,
     required String studentId,
@@ -123,28 +136,17 @@ class FirestoreService {
   }) async {
     await _db.collection('feedback').add({
       'classLogId': classLogId,
-      'studentId': studentId, // For privacy, don't link this to user info in reports
+      'studentId': studentId,
       'rating': rating,
       'comment': comment,
       'submittedAt': Timestamp.now(),
     });
   }
 
-  Stream<List<FeedbackModel>> getFeedbackForCourse(String courseId) {
-    return _db
-        .collection('feedback')
-        .where('courseId', isEqualTo: courseId) // Assumes courseId is denormalized in feedback
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => FeedbackModel.fromFirestore(doc.data(), doc.id))
-        .toList());
-  }
-
   Stream<List<FeedbackModel>> getAllFeedback() {
     return _db.collection('feedback').orderBy('submittedAt', descending: true).snapshots().map(
             (snapshot) => snapshot.docs.map((doc) => FeedbackModel.fromFirestore(doc.data(), doc.id)).toList());
   }
-
 
   // --- Admin Methods ---
   Stream<List<UserModel>> getPendingTeachers() {
@@ -196,5 +198,22 @@ class FirestoreService {
   Future<void> saveUserFcmToken(String uid, String? token) async {
     if (token == null) return;
     await _db.collection('users').doc(uid).update({'fcmToken': token});
+  }
+
+  Stream<List<RoutineModel>> getFullRoutine() {
+    return _db.collection('routine').snapshots().map((snapshot) =>
+        snapshot.docs.map((doc) => RoutineModel.fromFirestore(doc.data(), doc.id)).toList());
+  }
+
+  Future<void> addRoutineEntry(Map<String, dynamic> routineData) {
+    return _db.collection('routine').add(routineData);
+  }
+
+  Future<void> updateRoutineEntry(String routineId, Map<String, dynamic> routineData) {
+    return _db.collection('routine').doc(routineId).update(routineData);
+  }
+
+  Future<void> deleteRoutineEntry(String routineId) {
+    return _db.collection('routine').doc(routineId).delete();
   }
 }
