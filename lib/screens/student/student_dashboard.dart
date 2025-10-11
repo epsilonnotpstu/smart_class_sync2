@@ -7,6 +7,8 @@ import 'package:smart_class_sync/services/auth_service.dart';
 import 'package:smart_class_sync/services/firestore_service.dart';
 import 'package:smart_class_sync/widgets/class_list_item.dart';
 import '../../models/user_model.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'feedback_screen.dart';
 
 class StudentDashboard extends StatelessWidget {
   const StudentDashboard({super.key});
@@ -85,8 +87,18 @@ class StudentDashboard extends StatelessWidget {
             );
             return ClassListItem(
               info: displayInfo,
-              onDownloadNotes: () { /* TODO: Module 5 */ },
-              onProvideFeedback: () { /* TODO: Module 5 */ },
+              onDownloadNotes: classLog.notesUrl == null ? null : () async {
+                final uri = Uri.parse(classLog.notesUrl!);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              onProvideFeedback: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => FeedbackScreen(classLog: classLog)),
+                );
+              },
             );
           },
         );

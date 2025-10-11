@@ -4,6 +4,7 @@ import 'package:smart_class_sync/services/auth_service.dart';
 import 'manage_courses_screen.dart';
 import 'manage_routine_screen.dart';
 import 'manage_teachers_screen.dart';
+import 'feedback_reports_screen.dart';
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
@@ -69,7 +70,10 @@ class AdminDashboard extends StatelessWidget {
             icon: Icons.bar_chart_outlined,
             label: 'Feedback Reports',
             onTap: () {
-              // This will be implemented in Module 5
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FeedbackReportsScreen()),
+              );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('This feature will be available in a future module.')),
               );

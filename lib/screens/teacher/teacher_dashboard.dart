@@ -7,6 +7,7 @@ import 'package:smart_class_sync/services/firestore_service.dart';
 import 'package:smart_class_sync/widgets/class_list_item.dart';
 import '../../models/user_model.dart';
 import 'add_extra_class_screen.dart';
+import 'package:smart_class_sync/models/class_log_model.dart';
 
 class TeacherDashboard extends StatelessWidget {
   const TeacherDashboard({super.key});
@@ -161,6 +162,24 @@ class TeacherDashboard extends StatelessWidget {
                             status: 'cancelled',
                             scheduledDate: routineItem.startTime.toDate(), // simplified date
                           );
+                        });
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.upload_file, color: Colors.blue),
+                      tooltip: 'Upload Notes',
+                      onPressed: () {
+                        // We need the classLog ID here. For simplicity, we'll assume a log was created.
+                        // In a real app, you would fetch the specific log for this routine item.
+                        // This is a simplified logic for demonstration.
+                        _showActionDialog(context, 'Upload Notes', 'Do you want to upload notes for this class?', () {
+                          // Find the classLog created today for this routine
+                          // This logic is complex, so for now we just show a message
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Find this class in the logs and upload from there.'))
+                          );
+                          // A better UI would be a dedicated "Class History" page where a teacher can
+                          // select a past class and upload notes to it.
                         });
                       },
                     ),
