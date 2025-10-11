@@ -1,3 +1,4 @@
+// Add fcmToken field and include it in the constructor, fromMap, and toMap methods.
 class UserModel {
   final String uid;
   final String email;
@@ -6,6 +7,7 @@ class UserModel {
   final String? semester;
   final String? phoneNumber;
   final bool isVerified;
+  final String? fcmToken; // New field
 
   UserModel({
     required this.uid,
@@ -15,6 +17,7 @@ class UserModel {
     this.semester,
     this.phoneNumber,
     required this.isVerified,
+    this.fcmToken, // Add to constructor
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String uid) {
@@ -26,6 +29,7 @@ class UserModel {
       semester: data['semester'],
       phoneNumber: data['phoneNumber'],
       isVerified: data['isVerified'] ?? false,
+      fcmToken: data['fcmToken'], // Add to factory
     );
   }
 
@@ -37,6 +41,7 @@ class UserModel {
       'semester': semester,
       'phoneNumber': phoneNumber,
       'isVerified': isVerified,
+      'fcmToken': fcmToken, // Add to map
     };
   }
 }

@@ -117,7 +117,12 @@ class _AddExtraClassScreenState extends State<AddExtraClassScreen> {
                         items: teacherCourses.map((course) {
                           return DropdownMenuItem(
                             value: course,
-                            child: Text('${course.courseCode} - ${course.courseName}'),
+                            child: Expanded(
+                              child: Text(
+                                '${course.courseCode} - ${course.courseName}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           );
                         }).toList(),
                         onChanged: (value) => setState(() => _selectedCourse = value),

@@ -51,18 +51,20 @@ class ManageCoursesScreen extends StatelessWidget {
             child: Text(isEditing ? 'Update' : 'Add'),
             onPressed: () {
               if (_formKey.currentState!.validate()) {
-                final data = {
-                  'courseCode': _codeController.text,
-                  'courseName': _nameController.text,
-                  'semester': _selectedSemester,
-                  'teacherId': _selectedTeacherId,
-                };
-                if (isEditing) {
-                  service.updateCourse(course!.id, data);
-                } else {
-                  service.addCourse(data);
+                if (_selectedSemester != null && _selectedTeacherId != null) {
+                  final data = {
+                    'courseCode': _codeController.text,
+                    'courseName': _nameController.text,
+                    'semester': _selectedSemester,
+                    'teacherId': _selectedTeacherId,
+                  };
+                  if (isEditing) {
+                    service.updateCourse(course!.id, data);
+                  } else {
+                    service.addCourse(data);
+                  }
+                  Navigator.of(ctx).pop();
                 }
-                Navigator.of(ctx).pop();
               }
             },
           ),
@@ -74,14 +76,14 @@ class ManageCoursesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final firestoreService = Provider.of<FirestoreService>(context);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Manage Courses'), backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-      body: MultiProvider(
-        providers: [
-          StreamProvider<List<CourseModel>>.value(value: firestoreService.getCourses(), initialData: const []),
-          StreamProvider<List<UserModel>>.value(value: firestoreService.getUsersByRole('teacher'), initialData: const []),
-        ],
-        child: Consumer2<List<CourseModel>, List<UserModel>>(
+    return MultiProvider(
+      providers: [
+        StreamProvider<List<CourseModel>>.value(value: firestoreService.getCourses(), initialData: const []),
+        StreamProvider<List<UserModel>>.value(value: firestoreService.getUsersByRole('teacher'), initialData: const []),
+      ],
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Manage Courses'), backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+        body: Consumer2<List<CourseModel>, List<UserModel>>(
           builder: (context, courses, teachers, child) {
             if (courses.isEmpty) return const Center(child: Text('No courses found. Add one!'));
             return ListView.builder(
@@ -106,12 +108,12 @@ class ManageCoursesScreen extends StatelessWidget {
             );
           },
         ),
-      ),
-      floatingActionButton: Consumer<List<UserModel>>(
-        builder: (context, teachers, child) => FloatingActionButton(
-          onPressed: () => _showCourseDialog(context, firestoreService, teachers),
-          child: const Icon(Icons.add),
-          backgroundColor: Colors.indigo,
+        floatingActionButton: Consumer<List<UserModel>>(
+          builder: (context, teachers, child) => FloatingActionButton(
+            onPressed: () => _showCourseDialog(context, firestoreService, teachers),
+            child: const Icon(Icons.add),
+            backgroundColor: Colors.indigo,
+          ),
         ),
       ),
     );

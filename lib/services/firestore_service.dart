@@ -121,4 +121,8 @@ class FirestoreService {
         .map((doc) => UserModel.fromMap(doc.data(), doc.id))
         .toList());
   }
+  Future<void> saveUserFcmToken(String uid, String? token) async {
+    if (token == null) return;
+    await _db.collection('users').doc(uid).update({'fcmToken': token});
+  }
 }

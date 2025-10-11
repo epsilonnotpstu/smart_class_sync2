@@ -1,38 +1,28 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Users can create their own document on signup and can only read/update their own data.
+    // This rule allows the app to save the fcmToken to the user's own document.
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
     }
-    match /classLogs/{logId} {
+
+    // Authenticated users can read data from these collections.
+    // Write access will be locked down in a future module.
+    match /courses/{courseId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
     }
-    match /classResources/{resourceId} {
+
+    match /routine/{routineId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
     }
-    match /pendingVerifications/{userId} {
-      allow read, write: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    match /users/{userId}/routines/{routineId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    match /routines/{routineId} {
+
+    // The Cloud Function reads new class logs, which it can do without rules.
+    // Students need to read this to see class updates.
+    match /classLog/{logId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    match /feedback/{feedbackId} {
-      allow read: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      allow write: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
-    }
-    match /notifications/{notificationId} {
-      allow read: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow write: if request.auth != null;
-    }
-    match /devices/{deviceId} {
-      allow read, write: if request.auth != null;
     }
   }
 }
