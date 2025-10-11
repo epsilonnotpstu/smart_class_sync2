@@ -17,10 +17,10 @@ class SplashScreen extends StatelessWidget {
       stream: Provider.of<AuthService>(context).user,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
+          return const Scaffold(
             body: Center(
               child: SpinKitFadingCircle(
-                color: Colors.blue[700],
+                color: Colors.blue,
                 size: 50.0,
               ),
             ),

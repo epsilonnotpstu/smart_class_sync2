@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">smart_class_sync</string>
+    <string name="high_importance_channel">High Importance Notifications</string>
+</resources>

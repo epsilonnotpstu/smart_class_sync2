@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:smart_class_sync/screens/splash_screen.dart';
 import 'package:smart_class_sync/services/auth_service.dart';
+import 'package:smart_class_sync/services/firestore_service.dart'; // Import FirestoreService
 import 'firebase_options.dart';
 
 void main() async {
@@ -12,8 +12,11 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(
-    Provider<AuthService>(
-      create: (_) => AuthService(),
+    MultiProvider( // Use MultiProvider to provide multiple services
+      providers: [
+        Provider<AuthService>(create: (_) => AuthService()),
+        Provider<FirestoreService>(create: (_) => FirestoreService()),
+      ],
       child: const MyApp(),
     ),
   );
@@ -29,6 +32,13 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
+        scaffoldBackgroundColor: Colors.grey.shade100, // A lighter background
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
       home: const SplashScreen(),
     );

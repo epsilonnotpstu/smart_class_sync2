@@ -1,439 +1,176 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
-import '../../services/auth_service.dart';
-import '../../services/class_service.dart';
+import 'package:smart_class_sync/models/routine_model.dart';
+import 'package:smart_class_sync/services/auth_service.dart';
+import 'package:smart_class_sync/services/firestore_service.dart';
+import 'package:smart_class_sync/widgets/class_list_item.dart';
 import '../../models/user_model.dart';
+import 'add_extra_class_screen.dart';
 
-class TeacherDashboard extends StatefulWidget {
+class TeacherDashboard extends StatelessWidget {
   const TeacherDashboard({super.key});
 
-  @override
-  _TeacherDashboardState createState() => _TeacherDashboardState();
-}
-
-class _TeacherDashboardState extends State<TeacherDashboard> {
-  final ClassService _classService = ClassService();
+  void _showActionDialog(BuildContext context, String title, String content, VoidCallback onConfirm) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(child: const Text('Cancel'), onPressed: () => Navigator.of(ctx).pop()),
+          ElevatedButton(child: const Text('Confirm'), onPressed: () {
+            onConfirm();
+            Navigator.of(ctx).pop();
+          }),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue[900]!, Colors.blue[300]!],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: StreamBuilder<UserModel?>(
-                stream: authService.user,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return SpinKitFadingCircle(color: Colors.blue[700], size: 50.0);
-                  }
-                  if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red));
-                  }
-                  final user = snapshot.data;
-                  if (user == null) {
-                    return const Text('User not found', style: TextStyle(color: Colors.white));
-                  }
-                  if (!user.isVerified) {
-                    return const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Text('Pending Verification', style: TextStyle(fontSize: 20)),
-                      ),
-                    );
-                  }
-                  return Card(
-                    elevation: 8,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    color: Colors.white.withOpacity(0.9),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.school, size: 80, color: Colors.blue),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Welcome, ${user.fullName}!',
-                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blue[900]),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Assigned Classes',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue[900]),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            height: 200,
-                            child: StreamBuilder<QuerySnapshot>(
-                              stream: _classService.getTeacherClasses(user.uid),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return SpinKitFadingCircle(color: Colors.blue[700], size: 30.0);
-                                }
-                                if (snapshot.hasError) {
-                                  return Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red));
-                                }
-                                final logs = snapshot.data?.docs ?? [];
-                                if (logs.isEmpty) {
-                                  return const Text('No classes yet', style: TextStyle(color: Colors.grey));
-                                }
-                                return ListView.builder(
-                                  itemCount: logs.length,
-                                  itemBuilder: (context, index) {
-                                    final log = logs[index];
-                                    return Card(
-                                      margin: const EdgeInsets.symmetric(vertical: 4.0),
-                                      child: ListTile(
-                                        leading: const Icon(Icons.event, color: Colors.blue),
-                                        title: Text(log['subject'] ?? 'No Subject'),
-                                        subtitle: Text('Status: ${log['status'] ?? 'Confirmed'}'),
-                                        trailing: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.check, color: Colors.green),
-                                              onPressed: () async {
-                                                try {
-                                                  await _classService.updateClassStatus(log.id, 'Confirmed');
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    const SnackBar(content: Text('Class confirmed')),
-                                                  );
-                                                } catch (e) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(content: Text('Error: $e')),
-                                                  );
-                                                }
-                                              },
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.cancel, color: Colors.red),
-                                              onPressed: () async {
-                                                try {
-                                                  await _classService.updateClassStatus(log.id, 'Cancelled');
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    const SnackBar(content: Text('Class cancelled')),
-                                                  );
-                                                } catch (e) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(content: Text('Error: $e')),
-                                                  );
-                                                }
-                                              },
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.schedule, color: Colors.orange),
-                                              onPressed: () async {
-                                                try {
-                                                  await _classService.updateClassStatus(log.id, 'Running Late');
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    const SnackBar(content: Text('Class marked as late')),
-                                                  );
-                                                } catch (e) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(content: Text('Error: $e')),
-                                                  );
-                                                }
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Class Management',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue[900]),
-                          ),
-                          const SizedBox(height: 10),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.add, color: Colors.white),
-                            label: const Text('Add Extra Class'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[700],
-                              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            onPressed: () => _showAddExtraClass(context, user.uid),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Resource Sharing',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue[900]),
-                          ),
-                          const SizedBox(height: 10),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.upload, color: Colors.white),
-                            label: const Text('Upload Lecture Notes'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[700],
-                              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            onPressed: () async {
-                              try {
-                                await _classService.uploadResource('Uploaded Note', user.uid);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Resource uploaded successfully')),
-                                );
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error uploading resource: $e')),
-                                );
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Profile',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue[900]),
-                          ),
-                          const SizedBox(height: 10),
-                          Card(
-                            margin: const EdgeInsets.symmetric(vertical: 4.0),
-                            child: ListTile(
-                              leading: const Icon(Icons.person, color: Colors.blue),
-                              title: Text('Name: ${user.fullName}'),
-                              subtitle: Text('Email: ${user.email}'),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.blue),
-                                onPressed: () => _showProfileEdit(context, user),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.logout, color: Colors.white),
-                            label: const Text('Logout'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red[700],
-                              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            onPressed: () async => await authService.signOut(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final firestoreService = Provider.of<FirestoreService>(context, listen: false);
 
-  void _showAddExtraClass(BuildContext context, String teacherId) {
-    final _formKey = GlobalKey<FormState>();
-    final _subjectController = TextEditingController();
-    final _dateController = TextEditingController();
-    final _timeController = TextEditingController();
-    final _roomController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Add Extra Class'),
-        content: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _subjectController,
-                  decoration: InputDecoration(
-                    labelText: 'Subject',
-                    prefixIcon: const Icon(Icons.book, color: Colors.blue),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) => value == null || value.isEmpty ? 'Enter subject' : null,
-                ),
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: _dateController,
-                  decoration: InputDecoration(
-                    labelText: 'Date (YYYY-MM-DD)',
-                    prefixIcon: const Icon(Icons.calendar_today, color: Colors.blue),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Enter date';
-                    try {
-                      DateTime.parse(value);
-                      return null;
-                    } catch (e) {
-                      return 'Invalid date format';
-                    }
-                  },
-                ),
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: _timeController,
-                  decoration: InputDecoration(
-                    labelText: 'Time (HH:MM)',
-                    prefixIcon: const Icon(Icons.access_time, color: Colors.blue),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) => value == null || value.isEmpty ? 'Enter time' : null,
-                ),
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: _roomController,
-                  decoration: InputDecoration(
-                    labelText: 'Room',
-                    prefixIcon: const Icon(Icons.room, color: Colors.blue),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) => value == null || value.isEmpty ? 'Enter room' : null,
-                ),
-              ],
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Teacher Dashboard'),
+          backgroundColor: Colors.teal,
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () => authService.signOut(),
             ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.blue)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[700],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () async {
-              if (_formKey.currentState!.validate()) {
-                try {
-                  await _classService.addExtraClass(
-                    teacherId: teacherId,
-                    subject: _subjectController.text,
-                    date: DateTime.parse(_dateController.text),
-                    time: _timeController.text,
-                    room: _roomController.text,
-                  );
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Extra class added successfully')),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error adding class: $e')),
-                  );
-                }
-              }
-            },
-            child: const Text('Add', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showProfileEdit(BuildContext context, UserModel user) {
-    final _formKey = GlobalKey<FormState>();
-    final _nameController = TextEditingController(text: user.fullName);
-    final _emailController = TextEditingController(text: user.email);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Edit Profile'),
-        content: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  prefixIcon: const Icon(Icons.person, color: Colors.blue),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                validator: (value) => value == null || value.isEmpty ? 'Enter name' : null,
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email, color: Colors.blue),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Enter email';
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                    return 'Enter a valid email';
-                  }
-                  return null;
-                },
-              ),
+          ],
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: "Today's Actions", icon: Icon(Icons.today)),
+              Tab(text: 'Weekly Schedule', icon: Icon(Icons.calendar_month)),
             ],
+            indicatorColor: Colors.white,
+            labelColor: Colors.white,
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.blue)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[700],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () async {
-              if (_formKey.currentState!.validate()) {
-                try {
-                  await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-                    'fullName': _nameController.text,
-                    'email': _emailController.text,
-                  });
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Profile updated successfully')),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error updating profile: $e')),
-                  );
-                }
-              }
-            },
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+        body: FutureBuilder<UserModel?>(
+          future: authService.user.first,
+          builder: (context, userSnapshot) {
+            if (!userSnapshot.hasData) return const Center(child: CircularProgressIndicator());
+            final teacher = userSnapshot.data!;
+
+            return TabBarView(
+              children: [
+                _buildTodaysActions(context, firestoreService, teacher),
+                _buildWeeklySchedule(context, firestoreService, teacher.uid),
+              ],
+            );
+          },
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AddExtraClassScreen()),
+            );
+          },
+          backgroundColor: Colors.teal,
+          child: const Icon(Icons.add),
+          tooltip: 'Add Extra Class',
+        ),
       ),
+    );
+  }
+
+  Widget _buildWeeklySchedule(BuildContext context, FirestoreService service, String teacherId) {
+    return StreamBuilder<List<RoutineModel>>(
+      stream: service.getTeacherWeeklyRoutine(teacherId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('No classes in your weekly schedule.'));
+        }
+        // ... build a list view similar to student's weekly routine ...
+        return ListView.builder(
+          itemCount: snapshot.data!.length,
+          itemBuilder: (context, index) {
+            final routine = snapshot.data![index];
+            return ListTile(
+              title: Text("Course ID: ${routine.courseId}"), // Placeholder
+              subtitle: Text("${routine.dayOfWeek} at ${DateFormat.jm().format(routine.startTime.toDate())}"),
+              leading: const Icon(Icons.schedule),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTodaysActions(BuildContext context, FirestoreService service, UserModel teacher) {
+    // In a real scenario, this would show today's routine classes for the teacher
+    // And allow them to confirm, cancel, or mark as late.
+    // For now, we use the weekly schedule as a placeholder for action items.
+    return StreamBuilder<List<RoutineModel>>(
+      stream: service.getTeacherWeeklyRoutine(teacher.uid),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+        final routineForToday = snapshot.data!.where((r) => r.dayOfWeek.toLowerCase() == DateFormat('EEEE').format(DateTime.now()).toLowerCase()).toList();
+        if (routineForToday.isEmpty) return Center(child: Text('No classes scheduled for today.'));
+
+        return ListView.builder(
+          itemCount: routineForToday.length,
+          itemBuilder: (context, index) {
+            final routineItem = routineForToday[index];
+            return Card(
+              margin: const EdgeInsets.all(8.0),
+              child: ListTile(
+                title: Text("Course: ${routineItem.courseId}"),
+                subtitle: Text("Time: ${DateFormat.jm().format(routineItem.startTime.toDate())}"),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.check, color: Colors.green),
+                      tooltip: 'Confirm Class',
+                      onPressed: () {
+                        _showActionDialog(context, 'Confirm Class', 'This will notify students that class is on.', () {
+                          service.createClassLog(
+                            courseId: routineItem.courseId,
+                            teacherId: teacher.uid,
+                            semester: routineItem.semester,
+                            status: 'confirmed',
+                            scheduledDate: routineItem.startTime.toDate(), // simplified date
+                          );
+                        });
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.red),
+                      tooltip: 'Cancel Class',
+                      onPressed: () {
+                        _showActionDialog(context, 'Cancel Class', 'Are you sure you want to cancel? This will notify students.', () {
+                          service.createClassLog(
+                            courseId: routineItem.courseId,
+                            teacherId: teacher.uid,
+                            semester: routineItem.semester,
+                            status: 'cancelled',
+                            scheduledDate: routineItem.startTime.toDate(), // simplified date
+                          );
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

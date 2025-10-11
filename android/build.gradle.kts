@@ -1,7 +1,7 @@
 buildscript {
     dependencies {
         // Add this line for Firebase
-        classpath("com.google.gms:google-services:4.3.15")
+        classpath("com.google.gms:google-services:4.4.2")
 
     }
     repositories {
