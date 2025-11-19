@@ -19,22 +19,54 @@ class TeacherDashboard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         content: Text(content),
         actions: [
           TextButton(
-            child: const Text('Cancel'),
             onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            child: const Text('Confirm'),
             onPressed: () {
               onConfirm();
               Navigator.of(ctx).pop();
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade600,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirm'),
           ),
         ],
       ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context, AuthService authService) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Logout',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                authService.signOut();
+              },
+              child: const Text('Logout', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -49,30 +81,72 @@ class TeacherDashboard extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: Colors.grey[50],
         appBar: AppBar(
-          title: const Text('Teacher Dashboard'),
-          backgroundColor: Colors.teal,
-          foregroundColor: Colors.white,
+          title: const Text(
+            'Teacher Dashboard',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
+          ),
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.grey[800],
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
           actions: [
             IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () => authService.signOut(),
+              icon: Icon(Icons.logout, color: Colors.grey[700]),
+              onPressed: () => _showLogoutDialog(context, authService),
+              tooltip: 'Logout',
             ),
           ],
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: "Today's Actions", icon: Icon(Icons.today)),
-              Tab(text: 'Weekly Schedule', icon: Icon(Icons.calendar_month)),
+          bottom: TabBar(
+            tabs: const [
+              Tab(
+                text: "Today's Classes",
+                icon: Icon(Icons.today_outlined),
+                iconMargin: EdgeInsets.zero,
+              ),
+              Tab(
+                text: 'Weekly Schedule',
+                icon: Icon(Icons.calendar_month_outlined),
+                iconMargin: EdgeInsets.zero,
+              ),
             ],
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,
+            indicatorColor: Colors.blue.shade600,
+            labelColor: Colors.blue.shade600,
+            unselectedLabelColor: Colors.grey[600],
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorWeight: 3,
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
+            splashFactory: NoSplash.splashFactory,
+            overlayColor: MaterialStateProperty.all(Colors.transparent),
           ),
         ),
-        body: FutureBuilder<UserModel?>(
-          future: authService.user.first,
+        body: StreamBuilder<UserModel?>(
+          stream: authService.user,
           builder: (context, userSnapshot) {
-            if (!userSnapshot.hasData)
-              return const Center(child: CircularProgressIndicator());
+            if (userSnapshot.connectionState == ConnectionState.waiting) {
+              return _buildLoadingState();
+            }
+
+            if (!userSnapshot.hasData || userSnapshot.data == null) {
+              return _buildErrorState(
+                'Authentication Error',
+                'Unable to load teacher data',
+                Icons.error_outline,
+              );
+            }
+
+            if (userSnapshot.hasError) {
+              return _buildErrorState(
+                'Connection Error',
+                'Unable to load user data',
+                Icons.cloud_off,
+              );
+            }
+
             final teacher = userSnapshot.data!;
 
             return TabBarView(
@@ -92,9 +166,63 @@ class TeacherDashboard extends StatelessWidget {
               ),
             );
           },
-          backgroundColor: Colors.teal,
+          backgroundColor: Colors.blue.shade600,
+          foregroundColor: Colors.white,
+          elevation: 2,
           child: const Icon(Icons.add),
           tooltip: 'Add Extra Class',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading...',
+            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String title, String message, IconData icon) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+          ],
         ),
       ),
     );
@@ -109,28 +237,172 @@ class TeacherDashboard extends StatelessWidget {
       stream: service.getTeacherWeeklyRoutine(teacherId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return _buildLoadingState();
         }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(
-            child: Text('No classes in your weekly schedule.'),
+
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            'Network Error',
+            'Failed to load schedule data',
+            Icons.wifi_off,
           );
         }
-        // ... build a list view similar to student's weekly routine ...
-        return ListView.builder(
-          itemCount: snapshot.data!.length,
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return _buildEmptyState(
+            'No Weekly Schedule',
+            'Your weekly teaching schedule will appear here',
+            Icons.calendar_today_outlined,
+          );
+        }
+
+        final routines = snapshot.data!;
+        final Map<String, List<RoutineModel>> groupedRoutine = {};
+
+        for (var item in routines) {
+          (groupedRoutine[item.dayOfWeek] ??= []).add(item);
+        }
+
+        final sortedDays = _sortDays(groupedRoutine.keys.toList());
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: sortedDays.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
-            final routine = snapshot.data![index];
-            return ListTile(
-              title: Text("Course ID: ${routine.courseId}"), // Placeholder
-              subtitle: Text(
-                "${routine.dayOfWeek} at ${DateFormat.jm().format(routine.startTime.toDate())}",
-              ),
-              leading: const Icon(Icons.schedule),
-            );
+            final day = sortedDays[index];
+            final dayClasses = groupedRoutine[day]!;
+            dayClasses.sort((a, b) => a.startTime.compareTo(b.startTime));
+
+            return _buildDaySection(context, day, dayClasses);
           },
         );
       },
+    );
+  }
+
+  Widget _buildDaySection(
+    BuildContext context,
+    String day,
+    List<RoutineModel> dayClasses,
+  ) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade600,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  day,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...dayClasses.map(
+              (routine) => _buildScheduleItem(context, routine),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScheduleItem(BuildContext context, RoutineModel routine) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.class_outlined,
+              color: Colors.blue.shade600,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  routine.courseId,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${DateFormat.jm().format(routine.startTime.toDate())} - ${DateFormat.jm().format(routine.endTime.toDate())}',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.place_outlined,
+                      size: 14,
+                      color: Colors.grey[500],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      routine.room,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(width: 16),
+                    Icon(
+                      Icons.school_outlined,
+                      size: 14,
+                      color: Colors.grey[500],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      routine.semester,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -139,14 +411,28 @@ class TeacherDashboard extends StatelessWidget {
     FirestoreService service,
     UserModel teacher,
   ) {
-    // In a real scenario, this would show today's routine classes for the teacher
-    // And allow them to confirm, cancel, or mark as late.
-    // For now, we use the weekly schedule as a placeholder for action items.
     return StreamBuilder<List<RoutineModel>>(
       stream: service.getTeacherWeeklyRoutine(teacher.uid),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingState();
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            'Network Error',
+            'Failed to load today\'s classes',
+            Icons.wifi_off,
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return _buildEmptyState(
+            'No Schedule Data',
+            'Unable to load teaching schedule',
+            Icons.error_outline,
+          );
+        }
 
         final routineForToday = snapshot.data!
             .where(
@@ -155,99 +441,288 @@ class TeacherDashboard extends StatelessWidget {
                   DateFormat('EEEE').format(DateTime.now()).toLowerCase(),
             )
             .toList();
-        if (routineForToday.isEmpty)
-          return Center(child: Text('No classes scheduled for today.'));
 
-        return ListView.builder(
+        if (routineForToday.isEmpty) {
+          return _buildEmptyState(
+            'No Classes Today',
+            'You have no classes scheduled for today',
+            Icons.event_available_outlined,
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
           itemCount: routineForToday.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final routineItem = routineForToday[index];
-            return Card(
-              margin: const EdgeInsets.all(8.0),
-              child: ListTile(
-                title: Text("Course: ${routineItem.courseId}"),
-                subtitle: Text(
-                  "Time: ${DateFormat.jm().format(routineItem.startTime.toDate())}",
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.check, color: Colors.green),
-                      tooltip: 'Confirm Class',
-                      onPressed: () {
-                        _showActionDialog(
-                          context,
-                          'Confirm Class',
-                          'This will notify students that class is on.',
-                          () {
-                            service.createClassLog(
-                              courseId: routineItem.courseId,
-                              teacherId: teacher.uid,
-                              semester: routineItem.semester,
-                              status: 'confirmed',
-                              scheduledDate: routineItem.startTime
-                                  .toDate(), // simplified date
-                            );
-                          },
-                        );
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.red),
-                      tooltip: 'Cancel Class',
-                      onPressed: () {
-                        _showActionDialog(
-                          context,
-                          'Cancel Class',
-                          'Are you sure you want to cancel? This will notify students.',
-                          () {
-                            service.createClassLog(
-                              courseId: routineItem.courseId,
-                              teacherId: teacher.uid,
-                              semester: routineItem.semester,
-                              status: 'cancelled',
-                              scheduledDate: routineItem.startTime
-                                  .toDate(), // simplified date
-                            );
-                          },
-                        );
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.upload_file, color: Colors.blue),
-                      tooltip: 'Upload Notes',
-                      onPressed: () {
-                        // We need the classLog ID here. For simplicity, we'll assume a log was created.
-                        // In a real app, you would fetch the specific log for this routine item.
-                        // This is a simplified logic for demonstration.
-                        _showActionDialog(
-                          context,
-                          'Upload Notes',
-                          'Do you want to upload notes for this class?',
-                          () {
-                            // Find the classLog created today for this routine
-                            // This logic is complex, so for now we just show a message
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Find this class in the logs and upload from there.',
-                                ),
-                              ),
-                            );
-                            // A better UI would be a dedicated "Class History" page where a teacher can
-                            // select a past class and upload notes to it.
-                          },
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            );
+            return _buildTodayClassCard(context, service, teacher, routineItem);
           },
         );
       },
     );
+  }
+
+  Widget _buildTodayClassCard(
+    BuildContext context,
+    FirestoreService service,
+    UserModel teacher,
+    RoutineModel routineItem,
+  ) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.class_outlined,
+                    color: Colors.blue.shade600,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        routineItem.courseId,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${DateFormat.jm().format(routineItem.startTime.toDate())} - ${DateFormat.jm().format(routineItem.endTime.toDate())}',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.place_outlined,
+                            size: 14,
+                            color: Colors.grey[500],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            routineItem.room,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Icon(
+                            Icons.school_outlined,
+                            size: 14,
+                            color: Colors.grey[500],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            routineItem.semester,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Colors.grey),
+            const SizedBox(height: 16),
+            _buildActionButtons(context, service, teacher, routineItem),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(
+    BuildContext context,
+    FirestoreService service,
+    UserModel teacher,
+    RoutineModel routineItem,
+  ) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildActionButton(
+            'Confirm',
+            Icons.check_circle_outline,
+            Colors.green,
+            () {
+              _showActionDialog(
+                context,
+                'Confirm Class',
+                'This will notify students that "${routineItem.courseId}" class is happening as scheduled.',
+                () {
+                  service.createClassLog(
+                    courseId: routineItem.courseId,
+                    teacherId: teacher.uid,
+                    semester: routineItem.semester,
+                    status: 'confirmed',
+                    scheduledDate: routineItem.startTime.toDate(),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${routineItem.courseId} class confirmed'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildActionButton(
+            'Cancel',
+            Icons.cancel_outlined,
+            Colors.red,
+            () {
+              _showActionDialog(
+                context,
+                'Cancel Class',
+                'Are you sure you want to cancel "${routineItem.courseId}" class? This will notify all students.',
+                () {
+                  service.createClassLog(
+                    courseId: routineItem.courseId,
+                    teacherId: teacher.uid,
+                    semester: routineItem.semester,
+                    status: 'cancelled',
+                    scheduledDate: routineItem.startTime.toDate(),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${routineItem.courseId} class cancelled'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildActionButton(
+            'Upload Notes',
+            Icons.upload_file_outlined,
+            Colors.blue,
+            () {
+              _showActionDialog(
+                context,
+                'Upload Notes',
+                'You can upload notes for "${routineItem.courseId}" class after it has been confirmed.',
+                () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Please confirm the class first to upload notes',
+                      ),
+                      backgroundColor: Colors.blue,
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(
+    String text,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16, color: color),
+      label: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: color,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color.withOpacity(0.3)),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String title, String message, IconData icon) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<String> _sortDays(List<String> days) {
+    const dayOrder = {
+      "Saturday": 1,
+      "Sunday": 2,
+      "Monday": 3,
+      "Tuesday": 4,
+      "Wednesday": 5,
+      "Thursday": 6,
+      "Friday": 7,
+    };
+    days.sort((a, b) => (dayOrder[a] ?? 8).compareTo(dayOrder[b] ?? 8));
+    return days;
   }
 }

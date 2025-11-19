@@ -10,6 +10,7 @@ import 'package:smart_class_sync/widgets/class_list_item.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/user_model.dart';
 import 'feedback_screen.dart';
+import 'student_profile_screen.dart';
 
 class StudentDashboard extends StatelessWidget {
   const StudentDashboard({super.key});
@@ -36,6 +37,18 @@ class StudentDashboard extends StatelessWidget {
           elevation: 0,
           surfaceTintColor: Colors.transparent,
           actions: [
+            IconButton(
+              icon: Icon(Icons.person, color: Colors.grey[700]),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const StudentProfileScreen(),
+                  ),
+                );
+              },
+              tooltip: 'Profile',
+            ),
             IconButton(
               icon: Icon(Icons.logout, color: Colors.grey[700]),
               onPressed: () => _showLogoutDialog(context, authService),
@@ -542,7 +555,7 @@ class StudentDashboard extends StatelessWidget {
       label: Text(text, style: const TextStyle(fontSize: 13)),
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.blue.shade600,
-        side: BorderSide(color: Colors.blue.shade100!),
+        side: BorderSide(color: Colors.blue.shade100),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
