@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/class_log_model.dart';
-import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 
@@ -20,8 +19,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   void _submitFeedback() async {
     setState(() => _isLoading = true);
-    final user = await Provider.of<AuthService>(context, listen: false).user.first;
-    final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+    final user = await Provider.of<AuthService>(
+      context,
+      listen: false,
+    ).user.first;
+    final firestoreService = Provider.of<FirestoreService>(
+      context,
+      listen: false,
+    );
 
     if (user != null) {
       await firestoreService.submitFeedback(
@@ -53,9 +58,15 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            Text('Course: ${widget.classLog.courseId}', style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              'Course: ${widget.classLog.courseId}',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             const SizedBox(height: 24),
-            Text('Your Rating: ${_rating.toInt()} Stars', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Your Rating: ${_rating.toInt()} Stars',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             Slider(
               value: _rating,
               onChanged: (newRating) => setState(() => _rating = newRating),
@@ -84,7 +95,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               child: _isLoading
                   ? const CircularProgressIndicator(color: Colors.white)
                   : const Text('Submit Feedback'),
-            )
+            ),
           ],
         ),
       ),

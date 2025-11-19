@@ -7,7 +7,12 @@ import '../../services/firestore_service.dart';
 class ManageCoursesScreen extends StatelessWidget {
   const ManageCoursesScreen({super.key});
 
-  void _showCourseDialog(BuildContext context, FirestoreService service, List<UserModel> teachers, {CourseModel? course}) {
+  void _showCourseDialog(
+    BuildContext context,
+    FirestoreService service,
+    List<UserModel> teachers, {
+    CourseModel? course,
+  }) {
     final _formKey = GlobalKey<FormState>();
     final _codeController = TextEditingController(text: course?.courseCode);
     final _nameController = TextEditingController(text: course?.courseName);
@@ -25,19 +30,39 @@ class ManageCoursesScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextFormField(controller: _codeController, decoration: const InputDecoration(labelText: 'Course Code'), validator: (v) => v!.isEmpty ? 'Required' : null),
-                TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Course Name'), validator: (v) => v!.isEmpty ? 'Required' : null),
+                TextFormField(
+                  controller: _codeController,
+                  decoration: const InputDecoration(labelText: 'Course Code'),
+                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Course Name'),
+                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
                 DropdownButtonFormField<String>(
                   value: _selectedSemester,
                   hint: const Text('Semester'),
-                  items: ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                  items:
+                      ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th']
+                          .map(
+                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                          )
+                          .toList(),
                   onChanged: (v) => _selectedSemester = v,
                   validator: (v) => v == null ? 'Required' : null,
                 ),
                 DropdownButtonFormField<String>(
                   value: _selectedTeacherId,
                   hint: const Text('Teacher'),
-                  items: teachers.map((t) => DropdownMenuItem(value: t.uid, child: Text(t.fullName))).toList(),
+                  items: teachers
+                      .map(
+                        (t) => DropdownMenuItem(
+                          value: t.uid,
+                          child: Text(t.fullName),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (v) => _selectedTeacherId = v,
                   validator: (v) => v == null ? 'Required' : null,
                 ),
@@ -46,7 +71,10 @@ class ManageCoursesScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(child: const Text('Cancel'), onPressed: () => Navigator.of(ctx).pop()),
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(ctx).pop(),
+          ),
           ElevatedButton(
             child: Text(isEditing ? 'Update' : 'Add'),
             onPressed: () {
@@ -59,7 +87,7 @@ class ManageCoursesScreen extends StatelessWidget {
                     'teacherId': _selectedTeacherId,
                   };
                   if (isEditing) {
-                    service.updateCourse(course!.id, data);
+                    service.updateCourse(course.id, data);
                   } else {
                     service.addCourse(data);
                   }
@@ -78,28 +106,54 @@ class ManageCoursesScreen extends StatelessWidget {
     final firestoreService = Provider.of<FirestoreService>(context);
     return MultiProvider(
       providers: [
-        StreamProvider<List<CourseModel>>.value(value: firestoreService.getCourses(), initialData: const []),
-        StreamProvider<List<UserModel>>.value(value: firestoreService.getUsersByRole('teacher'), initialData: const []),
+        StreamProvider<List<CourseModel>>.value(
+          value: firestoreService.getCourses(),
+          initialData: const [],
+        ),
+        StreamProvider<List<UserModel>>.value(
+          value: firestoreService.getUsersByRole('teacher'),
+          initialData: const [],
+        ),
       ],
       child: Scaffold(
-        appBar: AppBar(title: const Text('Manage Courses'), backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+        appBar: AppBar(
+          title: const Text('Manage Courses'),
+          backgroundColor: Colors.indigo,
+          foregroundColor: Colors.white,
+        ),
         body: Consumer2<List<CourseModel>, List<UserModel>>(
           builder: (context, courses, teachers, child) {
-            if (courses.isEmpty) return const Center(child: Text('No courses found. Add one!'));
+            if (courses.isEmpty)
+              return const Center(child: Text('No courses found. Add one!'));
             return ListView.builder(
               itemCount: courses.length,
               itemBuilder: (context, index) {
                 final course = courses[index];
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: ListTile(
                     title: Text('${course.courseCode}: ${course.courseName}'),
                     subtitle: Text('Semester: ${course.semester}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showCourseDialog(context, firestoreService, teachers, course: course)),
-                        IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => firestoreService.deleteCourse(course.id)),
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => _showCourseDialog(
+                            context,
+                            firestoreService,
+                            teachers,
+                            course: course,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () =>
+                              firestoreService.deleteCourse(course.id),
+                        ),
                       ],
                     ),
                   ),
@@ -110,7 +164,8 @@ class ManageCoursesScreen extends StatelessWidget {
         ),
         floatingActionButton: Consumer<List<UserModel>>(
           builder: (context, teachers, child) => FloatingActionButton(
-            onPressed: () => _showCourseDialog(context, firestoreService, teachers),
+            onPressed: () =>
+                _showCourseDialog(context, firestoreService, teachers),
             child: const Icon(Icons.add),
             backgroundColor: Colors.indigo,
           ),

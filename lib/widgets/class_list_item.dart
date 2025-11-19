@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 // A simple model to unify data from RoutineModel and ClassLogModel for display
 class ClassDisplayInfo {
@@ -61,20 +60,29 @@ class ClassListItem extends StatelessWidget {
           backgroundColor: statusColor.withOpacity(0.1),
           child: Icon(statusIcon, color: statusColor),
         ),
-        title: Text(info.courseName, style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          info.courseName,
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         subtitle: Text('${info.time} • Room: ${info.room}'),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (onDownloadNotes != null)
               IconButton(
-                icon: Icon(Icons.download_outlined, color: Colors.blue.shade700),
+                icon: Icon(
+                  Icons.download_outlined,
+                  color: Colors.blue.shade700,
+                ),
                 onPressed: onDownloadNotes,
                 tooltip: 'Download Notes',
               ),
             if (onProvideFeedback != null)
               IconButton(
-                icon: Icon(Icons.feedback_outlined, color: Colors.amber.shade700),
+                icon: Icon(
+                  Icons.feedback_outlined,
+                  color: Colors.amber.shade700,
+                ),
                 onPressed: onProvideFeedback,
                 tooltip: 'Provide Feedback',
               ),
